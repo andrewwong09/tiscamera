@@ -519,6 +519,8 @@ static GstStateChangeReturn gst_tcam_mainsrc_change_state(GstElement* element,
 
 static GstFlowReturn gst_tcam_mainsrc_create(GstPushSrc* push_src, GstBuffer** buffer)
 {
+    GstMessage *msg = NULL;
+    GstClockTime timestamp;
     GstTcamMainSrc* self = GST_TCAM_MAINSRC(push_src);
 
     if (self->device->n_buffers_ != -1)
@@ -557,6 +559,19 @@ start_create:
         }
 
         gst_object_unref(src_pool);
+    }
+    timestamp = GST_BUFFER_TIMESTAMP (*buffer);
+    msg = gst_message_new_element(
+		    GST_OBJECT_CAST(self), 
+		    gst_structure_new (
+      			"timestamp_info_message",
+      			"timestamp", G_TYPE_UINT64, buffer[0]->pts,
+      			"first_timestamp", G_TYPE_BOOLEAN, TRUE,
+      			NULL
+			)
+    );
+    if (gst_element_post_message (GST_ELEMENT(self), msg) == FALSE) {
+    	GST_WARNING ("This element has no bus, therefore no message sent!");
     }
     /* TODO: check why aravis throws an incomplete buffer error
        but the received images are still valid */
